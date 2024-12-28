@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>局域网聊天和文件传输</title>
+    <title>局域网聊天</title>
     <style>
         body {
             background-color: #333;
@@ -65,6 +65,75 @@
             color: #007bff;
             text-align: center;
         }
+        
+        .message {
+            position: relative;
+        }
+        
+        .recall-btn {
+            display: none;
+        }
+        
+        .recalled {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .recalled-text {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .context-menu {
+            display: none;
+            position: fixed;
+            background-color: #444;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 5px 0;
+            min-width: 120px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            color: white;
+            user-select: none;
+        }
+
+        .context-menu-item:hover {
+            background-color: #555;
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background-color: #555;
+            margin: 5px 0;
+        }
+
+        .copy-tooltip {
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1001;
+            animation: fadeOut 1s ease-in-out forwards;
+            animation-delay: 1s;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .message.can-recall {
+            cursor: context-menu;
+        }
     </style>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
@@ -78,8 +147,22 @@
     
     <div id="chat-messages">
         {% for message in chat_history %}
-            <li>{{ message }}</li>
+            <li id="message-{{ message.id }}" 
+                class="message {% if message.is_recalled %}recalled{% endif %} {% if message.can_recall %}can-recall{% endif %}"
+                {% if message.can_recall %}data-message-id="{{ message.id }}"{% endif %}>
+                {% if message.is_recalled %}
+                    <span class="recalled-text">该消息已被撤回</span>
+                {% else %}
+                    <span class="message-content">{{ message.sender }}: {{ message.content }}</span>
+                {% endif %}
+            </li>
         {% endfor %}
+    </div>
+    
+    <div id="context-menu" class="context-menu">
+        <div class="context-menu-item" id="copy-option">复制消息</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="recall-option">撤回消息</div>
     </div>
     
     <form id="chat-form" class="chat-form">
@@ -93,6 +176,136 @@
             var messageInput = document.getElementById('message-input');
             var chatForm = document.getElementById('chat-form');
             var chatMessages = document.getElementById('chat-messages');
+            var contextMenu = document.getElementById('context-menu');
+            var currentMessageId = null;
+            var currentMessageElement = null;
+
+            // 处理右键菜单
+            document.addEventListener('contextmenu', function(e) {
+                const messageElement = e.target.closest('.message');
+                if (messageElement) {
+                    e.preventDefault();
+                    currentMessageElement = messageElement;
+                    currentMessageId = messageElement.dataset.messageId;
+                    
+                    // 显示/隐藏撤回选项
+                    const recallOption = document.getElementById('recall-option');
+                    if (messageElement.classList.contains('can-recall')) {
+                        recallOption.style.display = 'block';
+                    } else {
+                        recallOption.style.display = 'none';
+                    }
+                    
+                    contextMenu.style.display = 'block';
+                    
+                    // 确保菜单不会超出窗口边界
+                    let x = e.pageX;
+                    let y = e.pageY;
+                    const menuWidth = contextMenu.offsetWidth;
+                    const menuHeight = contextMenu.offsetHeight;
+                    const windowWidth = window.innerWidth;
+                    const windowHeight = window.innerHeight;
+                    
+                    if (x + menuWidth > windowWidth) {
+                        x = windowWidth - menuWidth;
+                    }
+                    if (y + menuHeight > windowHeight) {
+                        y = windowHeight - menuHeight;
+                    }
+                    
+                    contextMenu.style.left = x + 'px';
+                    contextMenu.style.top = y + 'px';
+                }
+            });
+
+            // 复制功能
+            document.getElementById('copy-option').addEventListener('click', function() {
+                if (currentMessageElement) {
+                    const messageContent = currentMessageElement.querySelector('.message-content');
+                    if (messageContent) {
+                        // 获取消息内容，去除发送者名字
+                        const fullText = messageContent.textContent;
+                        const colonIndex = fullText.indexOf(': ');
+                        const textToCopy = fullText.substring(colonIndex + 2);
+                        
+                        // 创建一个临时输入框来复制文本
+                        const tempInput = document.createElement('textarea');
+                        tempInput.value = textToCopy;
+                        document.body.appendChild(tempInput);
+                        tempInput.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(tempInput);
+                        
+                        // 显示复制成功提示
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'copy-tooltip';
+                        tooltip.textContent = '复制成功';
+                        tooltip.style.left = contextMenu.style.left;
+                        tooltip.style.top = parseInt(contextMenu.style.top) - 30 + 'px';
+                        document.body.appendChild(tooltip);
+                        
+                        // 移除提示
+                        setTimeout(() => {
+                            document.body.removeChild(tooltip);
+                        }, 2000);
+                    }
+                }
+                contextMenu.style.display = 'none';
+            });
+
+            // 点击其他地方关闭右键菜单
+            document.addEventListener('click', function() {
+                contextMenu.style.display = 'none';
+                currentMessageElement = null;
+                currentMessageId = null;
+            });
+
+            // 撤回选项点击事件
+            document.getElementById('recall-option').addEventListener('click', function() {
+                if (currentMessageId) {
+                    if (confirm('确定要撤回这条消息吗？')) {
+                        socket.emit('recall_message', {
+                            message_id: currentMessageId
+                        });
+                    }
+                    currentMessageId = null;
+                }
+            });
+
+            // 接收消息
+            socket.on('new_message', function(data) {
+                var li = document.createElement('li');
+                li.id = 'message-' + data.id;
+                li.className = 'message' + (data.sender === '{{ current_user.id }}' ? ' can-recall' : '');
+                
+                if (data.sender === '{{ current_user.id }}') {
+                    li.dataset.messageId = data.id;
+                }
+                
+                var messageContent = document.createElement('span');
+                messageContent.className = 'message-content';
+                messageContent.textContent = data.sender + ': ' + data.content;
+                li.appendChild(messageContent);
+                
+                chatMessages.appendChild(li);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+
+            // 处理消息撤回
+            socket.on('message_recalled', function(data) {
+                var messageElement = document.getElementById('message-' + data.message_id);
+                if (messageElement) {
+                    messageElement.innerHTML = '<span class="recalled-text">该消息已被撤回</span>';
+                    messageElement.classList.add('recalled');
+                    messageElement.classList.remove('can-recall');
+                    messageElement.removeAttribute('data-message-id');
+                }
+            });
+
+            // 处理撤回错误
+            socket.on('recall_error', function(data) {
+                alert(data.error);
+            });
 
             // 发送消息
             chatForm.onsubmit = function(e) {
@@ -103,14 +316,6 @@
                     messageInput.value = '';
                 }
             };
-
-            // 接收消息
-            socket.on('new_message', function(message) {
-                var li = document.createElement('li');
-                li.textContent = message;
-                chatMessages.appendChild(li);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            });
 
             // 连接状态
             socket.on('connect', function() {
