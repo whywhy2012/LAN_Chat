@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>登录</title>
+    <style>
+        body {
+            background-color: #333;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background-color: #444;
+            padding: 30px;
+            border-radius: 8px;
+            width: 300px;
+        }
+        h1 {
+            color: #007bff !important;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff !important;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3 !important;
+        }
+        .register-link {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .register-link a {
+            color: #007bff !important;
+            text-decoration: none;
+        }
+        .flash-message {
+            color: #ff4444;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>登录</h1>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="post">
+            <input type="text" name="username" placeholder="用户名" required>
+            <input type="password" name="password" placeholder="密码" required>
+            <button type="submit">登录</button>
+        </form>
+        <div class="register-link">
+            <a href="{{ url_for('register') }}">没有账号？立即注册</a>
+        </div>
+    </div>
+</body>
+</html> 

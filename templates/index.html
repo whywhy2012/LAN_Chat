@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>局域网聊天和文件传输</title>
+    <style>
+        body {
+            background-color: #333;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        #chat-messages {
+            height: 600px;
+            width: 95%;
+            max-width: 1800px;
+            overflow-y: auto;
+            margin: 0 auto 20px;
+            padding: 20px;
+            background-color: #444;
+            border-radius: 8px;
+        }
+        
+        #chat-messages li {
+            background-color: #555;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            list-style: none;
+        }
+        
+        .chat-form {
+            width: 95%;
+            max-width: 1800px;
+            margin: 0 auto;
+            display: flex;
+            gap: 10px;
+        }
+        
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #555;
+            color: white;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        h1 {
+            color: #007bff;
+            text-align: center;
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <div style="text-align: right; margin-bottom: 20px;">
+        <span style="margin-right: 20px;">当前用户: {{ current_user.id }}</span>
+        <a href="{{ url_for('logout') }}" style="color: #007bff; text-decoration: none;">退出登录</a>
+    </div>
+    
+    <h1>聊天室</h1>
+    
+    <div id="chat-messages">
+        {% for message in chat_history %}
+            <li>{{ message }}</li>
+        {% endfor %}
+    </div>
+    
+    <form id="chat-form" class="chat-form">
+        <input type="text" id="message-input" placeholder="输入消息" autocomplete="off">
+        <button type="submit">发送</button>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var socket = io();
+            var messageInput = document.getElementById('message-input');
+            var chatForm = document.getElementById('chat-form');
+            var chatMessages = document.getElementById('chat-messages');
+
+            // 发送消息
+            chatForm.onsubmit = function(e) {
+                e.preventDefault();
+                var message = messageInput.value.trim();
+                if (message) {
+                    socket.emit('send_message', message);
+                    messageInput.value = '';
+                }
+            };
+
+            // 接收消息
+            socket.on('new_message', function(message) {
+                var li = document.createElement('li');
+                li.textContent = message;
+                chatMessages.appendChild(li);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+
+            // 连接状态
+            socket.on('connect', function() {
+                console.log('Connected to server');
+            });
+
+            socket.on('disconnect', function() {
+                console.log('Disconnected from server');
+            });
+        });
+    </script>
+</body>
+</html> 
